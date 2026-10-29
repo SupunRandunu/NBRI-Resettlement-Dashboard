@@ -44,20 +44,31 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 html, body, [class*="st-"] { font-family: 'Inter', sans-serif; }
 
+/* Hide default streamlit header/footer */
+#MainMenu { visibility: hidden; }
+header { visibility: hidden; }
+footer { visibility: hidden; }
+
+/* Reduce top padding */
+.block-container { padding-top: 1rem; padding-bottom: 0; }
+
+/* Metric card */
 .metric-card {
     background: #1e2d3d;
     border: 1px solid #2f3e4e;
     border-radius: 12px;
-    padding: 16px;
+    padding: 18px 14px;
     text-align: center;
     position: relative;
     overflow: hidden;
     transition: all 0.3s;
+    min-height: 130px;
 }
-.metric-card:hover { transform: translateY(-2px); box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
-.metric-card .value { font-size: 28px; font-weight: 800; line-height: 1; margin: 4px 0; }
-.metric-card .label { font-size: 11px; color: #8899a6; text-transform: uppercase; letter-spacing: 0.5px; }
-.metric-card .pct { font-size: 11px; color: #8899a6; margin-top: 4px; }
+.metric-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+.metric-card .icon { font-size: 22px; margin-bottom: 6px; }
+.metric-card .value { font-size: 30px; font-weight: 800; line-height: 1; margin: 6px 0; color: #e8edf2; }
+.metric-card .label { font-size: 10px; color: #8899a6; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+.metric-card .pct { font-size: 11px; color: #5b7083; margin-top: 6px; }
 .metric-card::before {
     content: ''; position: absolute; top: 0; left: 0;
     width: 4px; height: 100%; border-radius: 4px 0 0 4px;
@@ -69,19 +80,59 @@ html, body, [class*="st-"] { font-family: 'Inter', sans-serif; }
 .mc-red::before { background: #e0245e; }
 .mc-teal::before { background: #00d4aa; }
 
-.badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-.badge-issued { background: rgba(23,191,99,0.15); color: #17bf63; }
-.badge-progress { background: rgba(255,173,31,0.15); color: #ffad1f; }
-.badge-not-issued { background: rgba(224,36,94,0.15); color: #e0245e; }
-.badge-approved { background: rgba(23,191,99,0.15); color: #17bf63; }
-.badge-conditions { background: rgba(255,173,31,0.15); color: #ffad1f; }
-.badge-rejected { background: rgba(224,36,94,0.15); color: #e0245e; }
+/* Metrics row spacing */
+.metrics-row { display: flex; gap: 12px; margin-bottom: 20px; }
 
-.legend-row { display: flex; flex-wrap: wrap; gap: 16px; padding: 8px 0; font-size: 12px; }
+/* Chart containers */
+.chart-box {
+    background: #1e2d3d;
+    border: 1px solid #2f3e4e;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.chart-box h4 { font-size: 14px; font-weight: 600; color: #e8edf2; margin: 0 0 12px 0; }
+
+/* Legend */
+.legend-row { display: flex; flex-wrap: wrap; gap: 14px; padding: 8px 0; font-size: 12px; color: #8899a6; }
 .legend-item { display: flex; align-items: center; gap: 6px; }
 .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
-div[data-testid="stMetric"] { background: #1e2d3d; border: 1px solid #2f3e4e; border-radius: 12px; padding: 12px; }
+/* Map container */
+.map-box {
+    background: #1e2d3d;
+    border: 1px solid #2f3e4e;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.map-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid #2f3e4e;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.map-header h4 { margin: 0; font-size: 14px; font-weight: 600; color: #e8edf2; }
+.map-header span { font-size: 12px; color: #5b7083; }
+
+/* Progress bars */
+.progress-container { margin-bottom: 14px; }
+.progress-label { display: flex; justify-content: space-between; font-size: 13px; color: #8899a6; margin-bottom: 4px; }
+.progress-bar-bg { height: 8px; background: #0f1923; border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+
+/* Section header */
+.section-header { font-size: 13px; color: #5b7083; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 16px; }
+
+/* Streamlit overrides */
+div[data-testid="stHorizontalBlock"] { gap: 12px; }
+div[data-testid="column"] > div { padding: 0; }
+.stTabs [data-baseweb="tab-list"] { gap: 8px; }
+.stTabs [data-baseweb="tab"] {
+    border-radius: 20px; padding: 6px 20px; font-size: 13px; font-weight: 600;
+    background: transparent; border: 1px solid #2f3e4e; color: #8899a6;
+}
+.stTabs [aria-selected="true"] { background: #1da1f2 !important; color: white !important; border-color: #1da1f2 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -305,7 +356,7 @@ if sel_approval != 'All':
 def metric_card(icon, value, label, pct, color_class):
     return f"""
     <div class="metric-card {color_class}">
-        <div style="font-size:24px;">{icon}</div>
+        <div class="icon">{icon}</div>
         <div class="value">{value}</div>
         <div class="label">{label}</div>
         <div class="pct">{pct}% of total</div>
@@ -336,26 +387,29 @@ if nav == "Overview":
     progress = len(fdf[fdf['Report Status'].str.lower().str.contains('prograss', na=False)])
     approved = len(fdf[fdf['Approval'].isin(['Approved', 'Approved with condition'])])
     done = len(fdf[fdf['Working Status'] == 'Done'])
-    gps_count = fdf['lat'].notna().sum()
+    gps_count = int(fdf['lat'].notna().sum())
     pct = lambda n: round(n / total * 100) if total else 0
 
+    # Title
+    st.markdown('<div class="section-header">Overview</div>', unsafe_allow_html=True)
+
     # Metric tiles
-    cols = st.columns(6)
-    cards = [
+    cols = st.columns(6, gap="small")
+    cards_data = [
         ("📄", total, "Total Lands", 100, "mc-blue"),
         ("✅", issued, "Reports Issued", pct(issued), "mc-green"),
         ("🔄", progress, "In Progress", pct(progress), "mc-orange"),
         ("🎯", approved, "Approved", pct(approved), "mc-purple"),
-        ("✅", done, "Work Done", pct(done), "mc-red"),
+        ("☑️", done, "Work Done", pct(done), "mc-red"),
         ("📍", gps_count, "GPS Mapped", pct(gps_count), "mc-teal"),
     ]
-    for col, (icon, val, lbl, p, cls) in zip(cols, cards):
+    for col, (icon, val, lbl, p, cls) in zip(cols, cards_data):
         col.markdown(metric_card(icon, val, lbl, p, cls), unsafe_allow_html=True)
 
-    st.markdown("")
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # Hero: Charts + Map
-    left, right = st.columns([1, 1.6])
+    left, right = st.columns([1, 1.6], gap="medium")
 
     with left:
         # Report Status Doughnut
@@ -363,10 +417,12 @@ if nav == "Overview":
         rs_counts.columns = ['Status', 'Count']
         if not rs_counts.empty:
             fig1 = px.pie(rs_counts, values='Count', names='Status', hole=0.65,
-                          color_discrete_sequence=CHART_COLORS, title="Report Status Distribution")
-            fig1.update_layout(margin=dict(t=40, b=0, l=0, r=0), height=280,
-                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                               font_color='#8899a6', title_font_size=14)
+                          color_discrete_sequence=[COLORS['green'], COLORS['orange'], COLORS['red'], COLORS['blue']])
+            fig1.update_layout(
+                title=dict(text="Report Status Distribution", font=dict(size=14, color='#e8edf2')),
+                margin=dict(t=40, b=10, l=10, r=10), height=270,
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                font_color='#8899a6', legend=dict(font=dict(size=11)))
             st.plotly_chart(fig1, use_container_width=True)
 
         # Approval Doughnut
@@ -374,17 +430,26 @@ if nav == "Overview":
         ap_counts.columns = ['Approval', 'Count']
         if not ap_counts.empty:
             fig2 = px.pie(ap_counts, values='Count', names='Approval', hole=0.65,
-                          color_discrete_sequence=[COLORS['green'], COLORS['orange'], COLORS['red'], COLORS['purple']],
-                          title="Approval Status")
-            fig2.update_layout(margin=dict(t=40, b=0, l=0, r=0), height=280,
-                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                               font_color='#8899a6', title_font_size=14)
+                          color_discrete_sequence=[COLORS['green'], COLORS['orange'], COLORS['red'], COLORS['purple']])
+            fig2.update_layout(
+                title=dict(text="Approval Status", font=dict(size=14, color='#e8edf2')),
+                margin=dict(t=40, b=10, l=10, r=10), height=270,
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                font_color='#8899a6', legend=dict(font=dict(size=11)))
             st.plotly_chart(fig2, use_container_width=True)
 
     with right:
-        # Map
-        st.markdown("##### 🗺️ Site Locations - Sri Lanka")
+        # Map with styled container
         map_df = fdf[fdf['lat'].notna() & fdf['lng'].notna()]
+        st.markdown(f"""
+        <div class="map-box">
+            <div class="map-header">
+                <h4>🗺️ Site Locations - Sri Lanka</h4>
+                <span>{len(map_df)} locations mapped</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
         m = folium.Map(location=[7.0, 80.8], zoom_start=8, tiles='OpenStreetMap')
         for _, row in map_df.iterrows():
             color = get_marker_color(row)
@@ -399,35 +464,37 @@ if nav == "Overview":
                     f"<b>Report:</b> {row['Report Status'] or 'Pending'}<br>"
                     f"<b>Approval:</b> {row['Approval'] or 'Pending'}<br>"
                     f"<b>Area:</b> {row['Area'] or '-'} acres",
-                    max_width=250
-                ),
+                    max_width=250),
             ).add_to(m)
-        folium_static(m, height=560)
+        folium_static(m, height=520)
 
-        # Legend
         st.markdown("""
         <div class="legend-row">
             <div class="legend-item"><span class="legend-dot" style="background:#17bf63;"></span> Issued - Approved</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#ffad1f;"></span> Issued - With Conditions</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#00d4aa;"></span> Issued - Approval Pending</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#e0245e;"></span> Not Approved / Not Issued</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#ffad1f;"></span> Issued - Conditions</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#00d4aa;"></span> Issued - Pending</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#e0245e;"></span> Not Approved</div>
             <div class="legend-item"><span class="legend-dot" style="background:#7856ff;"></span> In Progress</div>
             <div class="legend-item"><span class="legend-dot" style="background:#1da1f2;"></span> Pending</div>
         </div>
         """, unsafe_allow_html=True)
-        st.caption(f"{len(map_df)} locations mapped")
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # Charts Row 2
-    c1, c2 = st.columns(2)
+    c1, c2 = st.columns(2, gap="medium")
     with c1:
         dist_counts = fdf['District'].value_counts().reset_index()
         dist_counts.columns = ['District', 'Count']
         if not dist_counts.empty:
             fig3 = px.bar(dist_counts, x='District', y='Count', color='District',
-                          color_discrete_sequence=CHART_COLORS, title="Applications by District")
-            fig3.update_layout(showlegend=False, margin=dict(t=40, b=0), height=300,
-                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                               font_color='#8899a6', title_font_size=14)
+                          color_discrete_sequence=CHART_COLORS)
+            fig3.update_layout(
+                title=dict(text="Applications by District", font=dict(size=14, color='#e8edf2')),
+                showlegend=False, margin=dict(t=40, b=0), height=300,
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                font_color='#8899a6', xaxis=dict(gridcolor='#2f3e4e'),
+                yaxis=dict(gridcolor='#2f3e4e'))
             fig3.update_traces(marker_cornerradius=6)
             st.plotly_chart(fig3, use_container_width=True)
 
@@ -436,26 +503,30 @@ if nav == "Overview":
         ws_counts.columns = ['Status', 'Count']
         if not ws_counts.empty:
             fig4 = px.pie(ws_counts, values='Count', names='Status',
-                          color_discrete_sequence=CHART_COLORS, title="Working Status")
-            fig4.update_layout(margin=dict(t=40, b=0, l=0, r=0), height=300,
-                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                               font_color='#8899a6', title_font_size=14)
+                          color_discrete_sequence=CHART_COLORS)
+            fig4.update_layout(
+                title=dict(text="Working Status", font=dict(size=14, color='#e8edf2')),
+                margin=dict(t=40, b=10, l=10, r=10), height=300,
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                font_color='#8899a6', legend=dict(font=dict(size=11)))
             st.plotly_chart(fig4, use_container_width=True)
 
     # Timeline
     dates = fdf['Request Date'].dropna()
     dates = dates[dates.str.strip() != '']
     if not dates.empty:
-        parsed = pd.to_datetime(dates, errors='coerce')
-        parsed = parsed.dropna()
+        parsed = pd.to_datetime(dates, errors='coerce').dropna()
         if not parsed.empty:
             monthly = parsed.dt.to_period('M').value_counts().sort_index()
             monthly_df = pd.DataFrame({'Month': monthly.index.astype(str), 'Count': monthly.values})
-            fig5 = px.area(monthly_df, x='Month', y='Count', title="Monthly Requests Timeline",
+            fig5 = px.area(monthly_df, x='Month', y='Count',
                            color_discrete_sequence=[COLORS['blue']])
-            fig5.update_layout(margin=dict(t=40, b=0), height=300,
-                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                               font_color='#8899a6', title_font_size=14)
+            fig5.update_layout(
+                title=dict(text="Monthly Requests Timeline", font=dict(size=14, color='#e8edf2')),
+                margin=dict(t=40, b=0), height=280,
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                font_color='#8899a6', xaxis=dict(gridcolor='#2f3e4e'),
+                yaxis=dict(gridcolor='#2f3e4e'))
             fig5.update_traces(line_shape='spline')
             st.plotly_chart(fig5, use_container_width=True)
 
@@ -464,62 +535,74 @@ if nav == "Overview":
 # ANALYTICS
 # ══════════════════════════════════════════════════════════════════════
 elif nav == "Analytics":
-    c1, c2 = st.columns(2)
+    st.markdown('<div class="section-header">Analytics</div>', unsafe_allow_html=True)
 
+    c1, c2 = st.columns(2, gap="medium")
     with c1:
         dsd_counts = fdf['DSD'].value_counts().head(20).sort_values()
         if not dsd_counts.empty:
-            fig = px.bar(dsd_counts, orientation='h', title="Applications by DSD Division",
-                         color_discrete_sequence=[COLORS['teal']])
-            fig.update_layout(showlegend=False, margin=dict(t=40, l=0, r=0, b=0), height=400,
-                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                              font_color='#8899a6', title_font_size=14, yaxis_title='', xaxis_title='')
+            fig = px.bar(dsd_counts, orientation='h', color_discrete_sequence=[COLORS['teal']])
+            fig.update_layout(
+                title=dict(text="Applications by DSD Division", font=dict(size=14, color='#e8edf2')),
+                showlegend=False, margin=dict(t=40, l=0, r=0, b=0), height=400,
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                font_color='#8899a6', yaxis_title='', xaxis_title='',
+                xaxis=dict(gridcolor='#2f3e4e'), yaxis=dict(gridcolor='#2f3e4e'))
+            fig.update_traces(marker_cornerradius=6)
             st.plotly_chart(fig, use_container_width=True)
 
     with c2:
-        has_file = fdf['File Link'].apply(lambda x: bool(x and str(x).strip())).sum()
+        has_file = int(fdf['File Link'].apply(lambda x: bool(x and str(x).strip())).sum())
         no_file = len(fdf) - has_file
         fig = px.pie(values=[has_file, no_file], names=['File Available', 'No File'],
-                     color_discrete_sequence=[COLORS['green'], COLORS['red']], title="File Availability")
-        fig.update_layout(margin=dict(t=40, b=0, l=0, r=0), height=400,
-                          paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                          font_color='#8899a6', title_font_size=14)
+                     color_discrete_sequence=[COLORS['green'], COLORS['red']])
+        fig.update_layout(
+            title=dict(text="File Availability", font=dict(size=14, color='#e8edf2')),
+            margin=dict(t=40, b=10, l=10, r=10), height=400,
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+            font_color='#8899a6', legend=dict(font=dict(size=11)))
         st.plotly_chart(fig, use_container_width=True)
 
-    # GND Distribution
     gnd_counts = fdf['GND'].value_counts().head(15).sort_values()
     if not gnd_counts.empty:
-        fig = px.bar(gnd_counts, orientation='h', title="Top GND Divisions",
-                     color_discrete_sequence=[COLORS['purple']])
-        fig.update_layout(showlegend=False, margin=dict(t=40, l=0, r=0, b=0), height=350,
-                          paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                          font_color='#8899a6', title_font_size=14, yaxis_title='', xaxis_title='')
+        fig = px.bar(gnd_counts, orientation='h', color_discrete_sequence=[COLORS['purple']])
+        fig.update_layout(
+            title=dict(text="Top GND Divisions", font=dict(size=14, color='#e8edf2')),
+            showlegend=False, margin=dict(t=40, l=0, r=0, b=0), height=350,
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+            font_color='#8899a6', yaxis_title='', xaxis_title='',
+            xaxis=dict(gridcolor='#2f3e4e'), yaxis=dict(gridcolor='#2f3e4e'))
+        fig.update_traces(marker_cornerradius=6)
         st.plotly_chart(fig, use_container_width=True)
 
-    # Progress Summary
-    st.markdown("##### Process Completion Summary")
+    # Progress Summary with custom bars
+    st.markdown('<div class="section-header" style="margin-top:20px;">Process Completion Summary</div>', unsafe_allow_html=True)
     total = len(fdf)
     if total:
         metrics = [
-            ("Reports Issued", len(fdf[fdf['Report Status'] == 'Issued']), COLORS['green']),
-            ("Work Done", len(fdf[fdf['Working Status'] == 'Done']), COLORS['blue']),
-            ("GPS Coordinates", fdf['lat'].notna().sum(), COLORS['teal']),
-            ("Files Available", fdf['File Link'].apply(lambda x: bool(x and str(x).strip())).sum(), COLORS['purple']),
-            ("Approved", len(fdf[fdf['Approval'].isin(['Approved', 'Approved with condition'])]), COLORS['orange']),
+            ("Reports Issued", int(len(fdf[fdf['Report Status'] == 'Issued'])), COLORS['green']),
+            ("Work Done", int(len(fdf[fdf['Working Status'] == 'Done'])), COLORS['blue']),
+            ("GPS Coordinates", int(fdf['lat'].notna().sum()), COLORS['teal']),
+            ("Files Available", int(fdf['File Link'].apply(lambda x: bool(x and str(x).strip())).sum()), COLORS['purple']),
+            ("Approved", int(len(fdf[fdf['Approval'].isin(['Approved', 'Approved with condition'])])), COLORS['orange']),
         ]
+        progress_html = ""
         for label, count, color in metrics:
-            pct = round(count / total * 100)
-            col1, col2 = st.columns([3, 1])
-            col1.markdown(f"**{label}**")
-            col2.markdown(f"**{count}/{total} ({pct}%)**")
-            st.progress(pct / 100)
+            p = round(count / total * 100)
+            progress_html += f"""
+            <div class="progress-container">
+                <div class="progress-label"><span>{label}</span><span>{count}/{total} ({p}%)</span></div>
+                <div class="progress-bar-bg"><div class="progress-fill" style="width:{p}%;background:{color};"></div></div>
+            </div>"""
+        st.markdown(progress_html, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════
 # RECORDS
 # ══════════════════════════════════════════════════════════════════════
 elif nav == "Records":
-    tab1, tab2 = st.tabs(["Dithwah 2026", "Resettlement"])
+    st.markdown('<div class="section-header">Records</div>', unsafe_allow_html=True)
+    tab1, tab2 = st.tabs(["📋 Dithwah 2026", "📋 Resettlement"])
 
     with tab1:
         st.markdown("##### 📋 Dithwah 2026 Records")
