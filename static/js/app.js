@@ -127,7 +127,8 @@ function setupMobileMenu() {
 function setupMetricClicks() {
     document.querySelectorAll('.metric-card.clickable').forEach(card => {
         card.addEventListener('click', () => {
-            const filter = card.dataset.filter;
+            const filter = card.dataset.dfilter;
+            if (!filter) return;
 
             // Navigate to Records section
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -137,30 +138,28 @@ function setupMetricClicks() {
             document.getElementById('section-records').classList.add('active');
             document.getElementById('page-title').textContent = 'Records';
 
-            // Make sure Resettlement tab is active
+            // Make sure Dithwah tab is active
             document.querySelectorAll('#records-tabs .tab-pill').forEach(b => b.classList.remove('active'));
-            document.querySelector('#records-tabs .tab-pill[data-tab="resettlement"]').classList.add('active');
-            document.getElementById('tab-resettlement').style.display = '';
-            document.getElementById('tab-dithwah').style.display = 'none';
+            document.querySelector('#records-tabs .tab-pill[data-tab="dithwah"]').classList.add('active');
+            document.getElementById('tab-resettlement').style.display = 'none';
+            document.getElementById('tab-dithwah').style.display = '';
 
-            // Apply the filter
-            const searchInput = document.getElementById('table-search');
+            // Apply the filter on Dithwah data
+            const searchInput = document.getElementById('dithwah-search');
+            searchInput.value = '';
             if (filter === 'all') {
-                searchInput.value = '';
-                filteredData = [...allData];
+                filteredDithwah = [...dithwahData];
             } else if (filter === 'gps') {
-                searchInput.value = '';
-                filteredData = allData.filter(d => d.gps);
+                filteredDithwah = dithwahData.filter(d => d.gps);
+            } else if (filter === 'approved') {
+                filteredDithwah = dithwahData.filter(d => d.approval === 'Approved' || d.approval === 'Approved with condition');
             } else {
                 const [field, value] = filter.split(':');
-                searchInput.value = '';
-                filteredData = allData.filter(d => d[field] === value);
+                filteredDithwah = dithwahData.filter(d => d[field] === value);
             }
 
-            currentPage = 1;
-            renderTable();
-
-            // Scroll to top
+            dCurrentPage = 1;
+            renderDithwahTable();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     });
@@ -173,18 +172,30 @@ function setupFilters() {
     const typeFilter = document.getElementById('filter-type');
     const resetBtn = document.getElementById('filter-reset');
 
-    // Populate filter options
-    const districts = [...new Set(allData.map(d => d.district).filter(Boolean))].sort();
-    const statuses = [...new Set(allData.map(d => d.status).filter(Boolean))].sort();
-    const approvals = [...new Set(allData.map(d => d.approval).filter(Boolean))].sort();
-    const types = [...new Set(allData.map(d => d.resettlementType).filter(Boolean))].sort();
+    // Populate from Dithwah data
+    const districts = [...new Set(dithwahData.map(d => d.district).filter(Boolean))].sort();
+    const statuses = [...new Set(dithwahData.map(d => d.reportStatus).filter(Boolean))].sort();
+    const approvals = [...new Set(dithwahData.map(d => d.approval).filter(Boolean))].sort();
+    const dsds = [...new Set(dithwahData.map(d => d.dsd).filter(Boolean))].sort();
 
     populateSelect(distFilter, districts);
     populateSelect(statusFilter, statuses);
     populateSelect(approvalFilter, approvals);
-    populateSelect(typeFilter, types);
+    populateSelect(typeFilter, dsds);
 
-    [distFilter, statusFilter, approvalFilter, typeFilter].forEach(el => {
+    // When district changes, update DSD options
+    distFilter.addEventListener('change', () => {
+        const selectedDist = distFilter.value;
+        const filtered = selectedDist
+            ? dithwahData.filter(d => d.district === selectedDist)
+            : dithwahData;
+        const dsds = [...new Set(filtered.map(d => d.dsd).filter(Boolean))].sort();
+        typeFilter.innerHTML = '<option value="">All DSDs</option>';
+        populateSelect(typeFilter, dsds);
+        applyFilters();
+    });
+
+    [statusFilter, approvalFilter, typeFilter].forEach(el => {
         el.addEventListener('change', applyFilters);
     });
 
@@ -192,6 +203,9 @@ function setupFilters() {
         distFilter.value = '';
         statusFilter.value = '';
         approvalFilter.value = '';
+        // Reset DSD to show all
+        typeFilter.innerHTML = '<option value="">All DSDs</option>';
+        populateSelect(typeFilter, [...new Set(dithwahData.map(d => d.dsd).filter(Boolean))].sort());
         typeFilter.value = '';
         applyFilters();
     });
@@ -210,17 +224,17 @@ function applyFilters() {
     const dist = document.getElementById('filter-district').value;
     const status = document.getElementById('filter-status').value;
     const approval = document.getElementById('filter-approval').value;
-    const type = document.getElementById('filter-type').value;
+    const dsd = document.getElementById('filter-type').value;
 
-    filteredData = allData.filter(d => {
+    filteredDithwah = dithwahData.filter(d => {
         if (dist && d.district !== dist) return false;
-        if (status && d.status !== status) return false;
+        if (status && d.reportStatus !== status) return false;
         if (approval && d.approval !== approval) return false;
-        if (type && d.resettlementType !== type) return false;
+        if (dsd && d.dsd !== dsd) return false;
         return true;
     });
 
-    currentPage = 1;
+    dCurrentPage = 1;
     renderDashboard();
 }
 
@@ -229,30 +243,33 @@ function renderDashboard() {
     renderMetrics();
     renderCharts();
     renderTable();
+    renderDithwahTable();
     if (map) updateMapMarkers();
 }
 
-// ===== Metrics =====
+// ===== Metrics (Dithwah 2026 data) =====
 function renderMetrics() {
-    const total = filteredData.length;
-    const issued = filteredData.filter(d => d.status === 'Report Issued').length;
-    const inspected = filteredData.filter(d => d.status === 'Inspected').length;
-    const notInspected = filteredData.filter(d => d.status === 'Not Inspected').length;
-    const approved = filteredData.filter(d => d.approval === 'Approved').length;
-    const withGps = filteredData.filter(d => d.gps).length;
+    const data = filteredDithwah;
+    const total = data.length;
+    const issued = data.filter(d => d.reportStatus === 'Issued').length;
+    const inProgress = data.filter(d => d.reportStatus && d.reportStatus.toLowerCase().includes('prograss')).length;
+    const approved = data.filter(d => d.approval === 'Approved' || d.approval === 'Approved with condition').length;
+    const done = data.filter(d => d.workingStatus === 'Done').length;
+    const withGps = data.filter(d => d.gps).length;
 
     document.getElementById('metric-total').textContent = total;
     document.getElementById('metric-issued').textContent = issued;
-    document.getElementById('metric-inspected').textContent = inspected;
-    document.getElementById('metric-not-inspected').textContent = notInspected;
+    document.getElementById('metric-progress').textContent = inProgress;
     document.getElementById('metric-approved').textContent = approved;
+    document.getElementById('metric-done').textContent = done;
     document.getElementById('metric-gps').textContent = withGps;
 
-    // Percentages
-    const pctIssued = total ? Math.round((issued / total) * 100) : 0;
-    const pctApproved = total ? Math.round((approved / total) * 100) : 0;
-    document.getElementById('metric-issued-pct').textContent = `${pctIssued}% of total`;
-    document.getElementById('metric-approved-pct').textContent = `${pctApproved}% of total`;
+    const pct = (n) => total ? Math.round((n / total) * 100) : 0;
+    document.getElementById('metric-issued-pct').textContent = `${pct(issued)}% of total`;
+    document.getElementById('metric-progress-pct').textContent = `${pct(inProgress)}% of total`;
+    document.getElementById('metric-approved-pct').textContent = `${pct(approved)}% of total`;
+    document.getElementById('metric-done-pct').textContent = `${pct(done)}% of total`;
+    document.getElementById('metric-gps-pct').textContent = `${pct(withGps)}% of total`;
 }
 
 // ===== Charts =====
@@ -283,8 +300,8 @@ function renderCharts() {
     const fontColor = getChartFontColor();
     const gridColor = getGridColor();
 
-    // 1. Status Distribution (Doughnut)
-    const statusData = countBy(filteredData, 'status');
+    // 1. Report Status Distribution (Doughnut)
+    const statusData = countBy(filteredDithwah, 'reportStatus');
     chartInstances.status = new Chart(document.getElementById('chart-status'), {
         type: 'doughnut',
         data: {
@@ -310,7 +327,7 @@ function renderCharts() {
     });
 
     // 2. Approval Status (Doughnut)
-    const approvalData = countBy(filteredData, 'approval');
+    const approvalData = countBy(filteredDithwah, 'approval');
     chartInstances.approval = new Chart(document.getElementById('chart-approval'), {
         type: 'doughnut',
         data: {
@@ -336,7 +353,7 @@ function renderCharts() {
     });
 
     // 3. District Bar Chart
-    const distData = countBy(filteredData, 'district');
+    const distData = countBy(filteredDithwah, 'district');
     chartInstances.district = new Chart(document.getElementById('chart-district'), {
         type: 'bar',
         data: {
@@ -362,8 +379,8 @@ function renderCharts() {
         }
     });
 
-    // 4. Resettlement Type (Polar Area)
-    const typeData = countBy(filteredData, 'resettlementType');
+    // 4. Working Status (Polar Area)
+    const typeData = countBy(filteredDithwah, 'workingStatus');
     chartInstances.type = new Chart(document.getElementById('chart-type'), {
         type: 'polarArea',
         data: {
@@ -393,14 +410,15 @@ function renderCharts() {
         }
     });
 
-    // 5. Monthly Report Issued Timeline (Line)
+    // 5. Monthly Request Timeline (Line)
     const monthlyData = {};
-    filteredData.forEach(d => {
-        if (d.issuedDate) {
+    filteredDithwah.forEach(d => {
+        const dateStr = d.requestDate || d.issuedDate || '';
+        if (dateStr) {
             try {
-                const parts = d.issuedDate.split('/');
-                if (parts.length === 3) {
-                    const key = `${parts[2]}-${parts[0].padStart(2, '0')}`;
+                const dt = new Date(dateStr);
+                if (!isNaN(dt.getTime())) {
+                    const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2, '0')}`;
                     monthlyData[key] = (monthlyData[key] || 0) + 1;
                 }
             } catch(e) {}
@@ -449,7 +467,7 @@ function renderCharts() {
     });
 
     // 6. DSD Distribution (Horizontal Bar)
-    const dsdData = countBy(filteredData, 'dsd');
+    const dsdData = countBy(filteredDithwah, 'dsd');
     const sortedDSD = Object.entries(dsdData).sort((a, b) => b[1] - a[1]);
     chartInstances.dsd = new Chart(document.getElementById('chart-dsd'), {
         type: 'bar',
@@ -477,13 +495,13 @@ function renderCharts() {
         }
     });
 
-    // 7. LSSD Report Received (Pie)
-    const lssdTrue = filteredData.filter(d => d.lssdReceived === 'TRUE').length;
-    const lssdFalse = filteredData.filter(d => d.lssdReceived === 'FALSE').length;
+    // 7. File Availability (Pie)
+    const lssdTrue = filteredDithwah.filter(d => d.fileLink).length;
+    const lssdFalse = filteredDithwah.filter(d => !d.fileLink).length;
     chartInstances.lssd = new Chart(document.getElementById('chart-lssd'), {
         type: 'pie',
         data: {
-            labels: ['Received', 'Not Received'],
+            labels: ['File Available', 'No File'],
             datasets: [{
                 data: [lssdTrue, lssdFalse],
                 backgroundColor: [COLORS.green + 'cc', COLORS.red + 'cc'],
@@ -503,22 +521,20 @@ function renderCharts() {
         }
     });
 
-    // 8. Officer Workload (Bar)
+    // 8. GND Distribution (Bar)
     const officerData = {};
-    filteredData.forEach(d => {
-        const off = d.officer?.trim();
-        if (off && !off.includes('@')) {
-            officerData[off] = (officerData[off] || 0) + 1;
-        }
+    filteredDithwah.forEach(d => {
+        const gnd = d.gnd?.trim();
+        if (gnd) officerData[gnd] = (officerData[gnd] || 0) + 1;
     });
-    const sortedOfficers = Object.entries(officerData).sort((a, b) => b[1] - a[1]);
+    const sortedGND = Object.entries(officerData).sort((a, b) => b[1] - a[1]).slice(0, 15);
     chartInstances.officer = new Chart(document.getElementById('chart-officer'), {
         type: 'bar',
         data: {
-            labels: sortedOfficers.map(e => e[0]),
+            labels: sortedGND.map(e => e[0]),
             datasets: [{
-                label: 'Assignments',
-                data: sortedOfficers.map(e => e[1]),
+                label: 'Lands',
+                data: sortedGND.map(e => e[1]),
                 backgroundColor: COLORS.purple + 'cc',
                 borderRadius: 6,
                 borderSkipped: false,
@@ -704,17 +720,26 @@ function updateMapMarkers() {
     markers.forEach(m => map.removeLayer(m));
     markers = [];
 
-    const approvalColors = {
-        'Approved': COLORS.green,
-        'Approved with Conditions': COLORS.orange,
-        'Rejected': COLORS.red,
-    };
-
     const bounds = [];
-    filteredData.forEach(d => {
+    filteredDithwah.forEach(d => {
         if (d.gps) {
             const [lat, lng] = d.gps;
-            const color = approvalColors[d.approval] || COLORS.blue;
+            const rs = d.reportStatus?.trim() || '';
+            const ap = d.approval?.trim() || '';
+            let color;
+            if (rs === 'Issued') {
+                // Sub-color by approval
+                if (ap === 'Approved') color = COLORS.green;
+                else if (ap === 'Approved with condition') color = COLORS.orange;
+                else if (ap === 'Not Approved') color = COLORS.red;
+                else color = COLORS.teal; // Issued but approval pending
+            } else if (rs.toLowerCase().includes('prograss')) {
+                color = COLORS.purple;
+            } else if (rs === 'Not Issued') {
+                color = COLORS.red;
+            } else {
+                color = COLORS.blue; // Pending
+            }
             const marker = L.circleMarker([lat, lng], {
                 radius: 8,
                 fillColor: color,
@@ -725,12 +750,12 @@ function updateMapMarkers() {
 
             marker.bindPopup(`
                 <div style="font-family:Inter,sans-serif;font-size:13px;line-height:1.5;">
-                    <strong>#${d.serial}</strong> - ${d.beneficiary}<br>
+                    <strong>#${d.serial}</strong> - ${d.landName}<br>
                     <b>District:</b> ${d.district} / ${d.dsd}<br>
-                    <b>Status:</b> ${d.status}<br>
+                    <b>GND:</b> ${d.gnd}<br>
+                    <b>Report:</b> ${d.reportStatus || 'Pending'}<br>
                     <b>Approval:</b> ${d.approval || 'Pending'}<br>
-                    <b>Type:</b> ${d.resettlementType}<br>
-                    <b>GPS:</b> ${d.gpsRaw}
+                    <b>Area:</b> ${d.area || '-'} acres
                 </div>
             `);
 

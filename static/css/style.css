@@ -402,13 +402,12 @@ body {
 .metric-card .metric-change {
     font-size: 11px;
     margin-top: 8px;
+    color: var(--text-secondary);
     display: flex;
     align-items: center;
     gap: 4px;
 }
 
-.metric-change.positive { color: var(--accent-green); }
-.metric-change.negative { color: var(--accent-red); }
 
 /* ===== Overview Hero: Map + Charts ===== */
 .overview-hero {

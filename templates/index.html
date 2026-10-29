@@ -56,7 +56,7 @@
                 </select>
             </div>
             <div class="filter-group">
-                <label>Working Status</label>
+                <label>Report Status</label>
                 <select id="filter-status">
                     <option value="">All Statuses</option>
                 </select>
@@ -68,9 +68,9 @@
                 </select>
             </div>
             <div class="filter-group">
-                <label>Resettlement Type</label>
+                <label>DSD Division</label>
                 <select id="filter-type">
-                    <option value="">All Types</option>
+                    <option value="">All DSDs</option>
                 </select>
             </div>
             <button class="btn-reset" id="filter-reset">Reset Filters</button>
@@ -117,42 +117,45 @@
 
             <!-- Metric Cards -->
             <div class="metrics-grid">
-                <div class="metric-card blue clickable" data-filter="all">
+                <div class="metric-card blue clickable" data-dfilter="all">
                     <div class="metric-icon">&#x1F4C4;</div>
                     <div class="metric-value" id="metric-total">0</div>
-                    <div class="metric-label">Total Applications</div>
+                    <div class="metric-label">Total Lands</div>
                     <div class="metric-link">View all &#x2192;</div>
                 </div>
-                <div class="metric-card green clickable" data-filter="status:Report Issued">
+                <div class="metric-card green clickable" data-dfilter="reportStatus:Issued">
                     <div class="metric-icon">&#x2705;</div>
                     <div class="metric-value" id="metric-issued">0</div>
                     <div class="metric-label">Reports Issued</div>
-                    <div class="metric-change positive" id="metric-issued-pct">0% of total</div>
+                    <div class="metric-change" id="metric-issued-pct">0% of total</div>
                     <div class="metric-link">View records &#x2192;</div>
                 </div>
-                <div class="metric-card orange clickable" data-filter="status:Inspected">
-                    <div class="metric-icon">&#x1F50D;</div>
-                    <div class="metric-value" id="metric-inspected">0</div>
-                    <div class="metric-label">Inspected</div>
+                <div class="metric-card orange clickable" data-dfilter="reportStatus:In Prograss ">
+                    <div class="metric-icon">&#x1F504;</div>
+                    <div class="metric-value" id="metric-progress">0</div>
+                    <div class="metric-label">In Progress</div>
+                    <div class="metric-change" id="metric-progress-pct">0% of total</div>
                     <div class="metric-link">View records &#x2192;</div>
                 </div>
-                <div class="metric-card red clickable" data-filter="status:Not Inspected">
-                    <div class="metric-icon">&#x23F3;</div>
-                    <div class="metric-value" id="metric-not-inspected">0</div>
-                    <div class="metric-label">Not Inspected</div>
-                    <div class="metric-link">View records &#x2192;</div>
-                </div>
-                <div class="metric-card purple clickable" data-filter="approval:Approved">
+                <div class="metric-card purple clickable" data-dfilter="approved">
                     <div class="metric-icon">&#x1F3AF;</div>
                     <div class="metric-value" id="metric-approved">0</div>
                     <div class="metric-label">Approved</div>
-                    <div class="metric-change positive" id="metric-approved-pct">0% of total</div>
+                    <div class="metric-change" id="metric-approved-pct">0% of total</div>
                     <div class="metric-link">View records &#x2192;</div>
                 </div>
-                <div class="metric-card teal clickable" data-filter="gps">
+                <div class="metric-card red clickable" data-dfilter="workingStatus:Done">
+                    <div class="metric-icon">&#x2705;</div>
+                    <div class="metric-value" id="metric-done">0</div>
+                    <div class="metric-label">Work Done</div>
+                    <div class="metric-change" id="metric-done-pct">0% of total</div>
+                    <div class="metric-link">View records &#x2192;</div>
+                </div>
+                <div class="metric-card teal clickable" data-dfilter="gps">
                     <div class="metric-icon">&#x1F4CD;</div>
                     <div class="metric-value" id="metric-gps">0</div>
                     <div class="metric-label">GPS Mapped</div>
+                    <div class="metric-change" id="metric-gps-pct">0% of total</div>
                     <div class="metric-link">View records &#x2192;</div>
                 </div>
             </div>
@@ -162,7 +165,7 @@
                 <!-- Left: Key Charts stacked -->
                 <div class="hero-charts">
                     <div class="chart-card">
-                        <h3><span class="chart-icon">&#x25C9;</span> Working Status Distribution</h3>
+                        <h3><span class="chart-icon">&#x25C9;</span> Report Status Distribution</h3>
                         <div class="chart-container">
                             <canvas id="chart-status"></canvas>
                         </div>
@@ -186,15 +189,23 @@
                         <div class="map-legend">
                             <div class="legend-item">
                                 <div class="legend-dot" style="background:#17bf63;"></div>
-                                <span>Approved</span>
+                                <span>Issued - Approved</span>
                             </div>
                             <div class="legend-item">
                                 <div class="legend-dot" style="background:#ffad1f;"></div>
-                                <span>Approved with Conditions</span>
+                                <span>Issued - With Conditions</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#00d4aa;"></div>
+                                <span>Issued - Approval Pending</span>
                             </div>
                             <div class="legend-item">
                                 <div class="legend-dot" style="background:#e0245e;"></div>
-                                <span>Rejected</span>
+                                <span>Not Approved / Not Issued</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#7856ff;"></div>
+                                <span>In Progress</span>
                             </div>
                             <div class="legend-item">
                                 <div class="legend-dot" style="background:#1da1f2;"></div>
@@ -214,7 +225,7 @@
                     </div>
                 </div>
                 <div class="chart-card">
-                    <h3><span class="chart-icon">&#x2B50;</span> Resettlement Types</h3>
+                    <h3><span class="chart-icon">&#x2B50;</span> Working Status</h3>
                     <div class="chart-container">
                         <canvas id="chart-type"></canvas>
                     </div>
@@ -224,7 +235,7 @@
             <!-- Timeline Chart -->
             <div class="charts-grid">
                 <div class="chart-card full-width">
-                    <h3><span class="chart-icon">&#x1F4C5;</span> Monthly Reports Issued Timeline</h3>
+                    <h3><span class="chart-icon">&#x1F4C5;</span> Monthly Requests Timeline</h3>
                     <div class="chart-container">
                         <canvas id="chart-timeline"></canvas>
                     </div>
@@ -243,7 +254,7 @@
                     </div>
                 </div>
                 <div class="chart-card">
-                    <h3><span class="chart-icon">&#x1F4CB;</span> LSSD Report Status</h3>
+                    <h3><span class="chart-icon">&#x1F4CB;</span> File Availability</h3>
                     <div class="chart-container">
                         <canvas id="chart-lssd"></canvas>
                     </div>
@@ -252,7 +263,7 @@
 
             <div class="charts-grid">
                 <div class="chart-card full-width">
-                    <h3><span class="chart-icon">&#x1F464;</span> Officer Workload</h3>
+                    <h3><span class="chart-icon">&#x1F464;</span> Top GND Divisions</h3>
                     <div class="chart-container" style="height:200px;">
                         <canvas id="chart-officer"></canvas>
                     </div>
@@ -272,12 +283,12 @@
 
             <!-- Tab switcher -->
             <div class="tab-pills" id="records-tabs">
-                <button class="tab-pill active" data-tab="resettlement">Resettlement</button>
-                <button class="tab-pill" data-tab="dithwah">Dithwah 2026</button>
+                <button class="tab-pill" data-tab="resettlement">Resettlement</button>
+                <button class="tab-pill active" data-tab="dithwah">Dithwah 2026</button>
             </div>
 
             <!-- Resettlement Table -->
-            <div class="table-card" id="tab-resettlement">
+            <div class="table-card" id="tab-resettlement" style="display:none;">
                 <div class="table-header">
                     <h3>&#x1F4CB; Resettlement Records</h3>
                     <div class="table-search">
@@ -314,7 +325,7 @@
             </div>
 
             <!-- Dithwah 2026 Table -->
-            <div class="table-card" id="tab-dithwah" style="display:none;">
+            <div class="table-card" id="tab-dithwah">
                 <div class="table-header">
                     <h3>&#x1F4CB; Dithwah 2026 Records</h3>
                     <div class="table-search">
@@ -366,18 +377,17 @@
 <!-- Progress summary renderer -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Build progress bars after data loads
     setTimeout(() => {
         const container = document.getElementById('progress-summary');
-        if (!container || !allData.length) return;
+        if (!container || !dithwahData.length) return;
 
-        const total = allData.length;
+        const total = dithwahData.length;
         const metrics = [
-            { label: 'Reports Issued', count: allData.filter(d => d.status === 'Report Issued').length, color: '#17bf63' },
-            { label: 'Site Inspected', count: allData.filter(d => d.inspectionDate).length, color: '#1da1f2' },
-            { label: 'GPS Coordinates', count: allData.filter(d => d.gps).length, color: '#00d4aa' },
-            { label: 'LSSD Reports', count: allData.filter(d => d.lssdReceived === 'TRUE').length, color: '#7856ff' },
-            { label: 'Uploaded to DB', count: allData.filter(d => d.uploadStatus === 'Yes').length, color: '#ffad1f' },
+            { label: 'Reports Issued', count: dithwahData.filter(d => d.reportStatus === 'Issued').length, color: '#17bf63' },
+            { label: 'Work Done', count: dithwahData.filter(d => d.workingStatus === 'Done').length, color: '#1da1f2' },
+            { label: 'GPS Coordinates', count: dithwahData.filter(d => d.gps).length, color: '#00d4aa' },
+            { label: 'Files Available', count: dithwahData.filter(d => d.fileLink).length, color: '#7856ff' },
+            { label: 'Approved', count: dithwahData.filter(d => d.approval === 'Approved' || d.approval === 'Approved with condition').length, color: '#ffad1f' },
         ];
 
         container.innerHTML = metrics.map(m => {
@@ -395,10 +405,9 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }).join('');
 
-        // Map count
         const mapCount = document.getElementById('map-count');
         if (mapCount) {
-            mapCount.textContent = `${allData.filter(d => d.gps).length} locations mapped`;
+            mapCount.textContent = `${dithwahData.filter(d => d.gps).length} locations mapped`;
         }
     }, 500);
 });
