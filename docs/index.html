@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBRI Resettlement</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- App CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Global Loader -->
+<div id="global-loader" style="position:fixed;inset:0;z-index:9999;background:var(--bg-primary);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+    <div class="spinner"></div>
+    <div style="color:var(--text-muted);font-size:14px;">Loading live data from Google Sheets...</div>
+</div>
+
+<!-- Sidebar Overlay (Mobile) -->
+<div class="sidebar-overlay"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <div class="logo">
+            <div class="logo-icon">N</div>
+            <div>
+                <h1>NBRI Resettlement</h1>
+                <p>Progress Dashboard</p>
+            </div>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-section-title">Main</div>
+        <a href="#" class="nav-item active" data-section="section-overview">
+            <span class="nav-icon">&#x1F4CA;</span>
+            <span class="nav-text">Overview</span>
+        </a>
+        <a href="#" class="nav-item" data-section="section-analytics">
+            <span class="nav-icon">&#x1F4C8;</span>
+            <span class="nav-text">Analytics</span>
+        </a>
+        <a href="#" class="nav-item" data-section="section-records">
+            <span class="nav-icon">&#x1F4CB;</span>
+            <span class="nav-text">Records</span>
+        </a>
+
+        <div class="nav-section-title" style="margin-top:20px;">Filters</div>
+        <div style="padding: 0 12px;">
+            <div class="filter-group">
+                <label>District</label>
+                <select id="filter-district">
+                    <option value="">All Districts</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Working Status</label>
+                <select id="filter-status">
+                    <option value="">All Statuses</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Approval</label>
+                <select id="filter-approval">
+                    <option value="">All Approvals</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Resettlement Type</label>
+                <select id="filter-type">
+                    <option value="">All Types</option>
+                </select>
+            </div>
+            <button class="btn-reset" id="filter-reset">Reset Filters</button>
+        </div>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div style="font-size:11px; color:var(--text-muted);">
+            NBRI - HSPTD Division<br>
+            NLRP Site Investigation Unit
+        </div>
+    </div>
+</aside>
+
+<!-- Main Content -->
+<div class="main-content">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <button class="menu-toggle" id="menu-toggle">&#x2630;</button>
+            <div>
+                <h2 id="page-title">Overview</h2>
+                <div class="breadcrumb">
+                    <span>NBRI</span>
+                    <span class="sep">/</span>
+                    <span>Resettlement Dashboard</span>
+                </div>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <span class="last-updated">Data: 2026 Records</span>
+            <button class="theme-toggle" id="theme-toggle" title="Toggle theme">
+                <span>&#x2600;&#xFE0F;</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Page Content -->
+    <div class="page-content">
+
+        <!-- ========== OVERVIEW SECTION ========== -->
+        <div id="section-overview" class="section active">
+
+            <!-- Metric Cards -->
+            <div class="metrics-grid">
+                <div class="metric-card blue clickable" data-filter="all">
+                    <div class="metric-icon">&#x1F4C4;</div>
+                    <div class="metric-value" id="metric-total">0</div>
+                    <div class="metric-label">Total Applications</div>
+                    <div class="metric-link">View all &#x2192;</div>
+                </div>
+                <div class="metric-card green clickable" data-filter="status:Report Issued">
+                    <div class="metric-icon">&#x2705;</div>
+                    <div class="metric-value" id="metric-issued">0</div>
+                    <div class="metric-label">Reports Issued</div>
+                    <div class="metric-change positive" id="metric-issued-pct">0% of total</div>
+                    <div class="metric-link">View records &#x2192;</div>
+                </div>
+                <div class="metric-card orange clickable" data-filter="status:Inspected">
+                    <div class="metric-icon">&#x1F50D;</div>
+                    <div class="metric-value" id="metric-inspected">0</div>
+                    <div class="metric-label">Inspected</div>
+                    <div class="metric-link">View records &#x2192;</div>
+                </div>
+                <div class="metric-card red clickable" data-filter="status:Not Inspected">
+                    <div class="metric-icon">&#x23F3;</div>
+                    <div class="metric-value" id="metric-not-inspected">0</div>
+                    <div class="metric-label">Not Inspected</div>
+                    <div class="metric-link">View records &#x2192;</div>
+                </div>
+                <div class="metric-card purple clickable" data-filter="approval:Approved">
+                    <div class="metric-icon">&#x1F3AF;</div>
+                    <div class="metric-value" id="metric-approved">0</div>
+                    <div class="metric-label">Approved</div>
+                    <div class="metric-change positive" id="metric-approved-pct">0% of total</div>
+                    <div class="metric-link">View records &#x2192;</div>
+                </div>
+                <div class="metric-card teal clickable" data-filter="gps">
+                    <div class="metric-icon">&#x1F4CD;</div>
+                    <div class="metric-value" id="metric-gps">0</div>
+                    <div class="metric-label">GPS Mapped</div>
+                    <div class="metric-link">View records &#x2192;</div>
+                </div>
+            </div>
+
+            <!-- Hero: Map + Key Charts side by side -->
+            <div class="overview-hero">
+                <!-- Left: Key Charts stacked -->
+                <div class="hero-charts">
+                    <div class="chart-card">
+                        <h3><span class="chart-icon">&#x25C9;</span> Working Status Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="chart-status"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3><span class="chart-icon">&#x25C9;</span> Approval Status</h3>
+                        <div class="chart-container">
+                            <canvas id="chart-approval"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: GIS Map (priority view) -->
+                <div class="hero-map">
+                    <div class="map-card">
+                        <div class="map-header">
+                            <h3>&#x1F5FA; Site Locations - Sri Lanka</h3>
+                            <span style="font-size:12px;color:var(--text-muted);" id="map-count">0 locations mapped</span>
+                        </div>
+                        <div id="map"></div>
+                        <div class="map-legend">
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#17bf63;"></div>
+                                <span>Approved</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#ffad1f;"></div>
+                                <span>Approved with Conditions</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#e0245e;"></div>
+                                <span>Rejected</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#1da1f2;"></div>
+                                <span>Pending</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row 2 -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3><span class="chart-icon">&#x1F4CA;</span> Applications by District</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-district"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3><span class="chart-icon">&#x2B50;</span> Resettlement Types</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-type"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline Chart -->
+            <div class="charts-grid">
+                <div class="chart-card full-width">
+                    <h3><span class="chart-icon">&#x1F4C5;</span> Monthly Reports Issued Timeline</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-timeline"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== ANALYTICS SECTION ========== -->
+        <div id="section-analytics" class="section">
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3><span class="chart-icon">&#x1F3D8;</span> Applications by DSD Division</h3>
+                    <div class="chart-container" style="height:350px;">
+                        <canvas id="chart-dsd"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3><span class="chart-icon">&#x1F4CB;</span> LSSD Report Status</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-lssd"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card full-width">
+                    <h3><span class="chart-icon">&#x1F464;</span> Officer Workload</h3>
+                    <div class="chart-container" style="height:200px;">
+                        <canvas id="chart-officer"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Summary -->
+            <div class="chart-card" style="margin-top:20px;">
+                <h3><span class="chart-icon">&#x1F4CA;</span> Process Completion Summary</h3>
+                <div id="progress-summary" style="padding:8px 0;"></div>
+            </div>
+        </div>
+
+
+        <!-- ========== RECORDS SECTION ========== -->
+        <div id="section-records" class="section">
+
+            <!-- Tab switcher -->
+            <div class="tab-pills" id="records-tabs">
+                <button class="tab-pill active" data-tab="resettlement">Resettlement</button>
+                <button class="tab-pill" data-tab="dithwah">Dithwah 2026</button>
+            </div>
+
+            <!-- Resettlement Table -->
+            <div class="table-card" id="tab-resettlement">
+                <div class="table-header">
+                    <h3>&#x1F4CB; Resettlement Records</h3>
+                    <div class="table-search">
+                        <input type="text" id="table-search" placeholder="Search records...">
+                        <button class="btn-export" onclick="exportCSV()">
+                            &#x2B07; Export CSV
+                        </button>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="serial"># <span class="sort-icon"></span></th>
+                                <th data-sort="beneficiary">Beneficiary <span class="sort-icon"></span></th>
+                                <th data-sort="district">District <span class="sort-icon"></span></th>
+                                <th data-sort="dsd">DSD <span class="sort-icon"></span></th>
+                                <th data-sort="status">Status <span class="sort-icon"></span></th>
+                                <th data-sort="approval">Approval <span class="sort-icon"></span></th>
+                                <th data-sort="resettlementType">Type <span class="sort-icon"></span></th>
+                                <th data-sort="inspectionDate">Inspected <span class="sort-icon"></span></th>
+                                <th data-sort="issuedDate">Issued <span class="sort-icon"></span></th>
+                                <th data-sort="report">Report File <span class="sort-icon"></span></th>
+                                <th>GPS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                </div>
+                <div class="table-footer">
+                    <span id="table-info">Showing 0-0 of 0</span>
+                    <div class="pagination" id="table-pagination"></div>
+                </div>
+            </div>
+
+            <!-- Dithwah 2026 Table -->
+            <div class="table-card" id="tab-dithwah" style="display:none;">
+                <div class="table-header">
+                    <h3>&#x1F4CB; Dithwah 2026 Records</h3>
+                    <div class="table-search">
+                        <input type="text" id="dithwah-search" placeholder="Search records...">
+                        <button class="btn-export" onclick="exportDithwahCSV()">
+                            &#x2B07; Export CSV
+                        </button>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table" id="dithwah-table">
+                        <thead>
+                            <tr>
+                                <th data-dsort="serial"># <span class="sort-icon"></span></th>
+                                <th data-dsort="landName">Land Name <span class="sort-icon"></span></th>
+                                <th data-dsort="district">District <span class="sort-icon"></span></th>
+                                <th data-dsort="dsd">DSD <span class="sort-icon"></span></th>
+                                <th data-dsort="gnd">GND <span class="sort-icon"></span></th>
+                                <th data-dsort="reportStatus">Report Status <span class="sort-icon"></span></th>
+                                <th data-dsort="approval">Approval <span class="sort-icon"></span></th>
+                                <th data-dsort="requestDate">Request Date <span class="sort-icon"></span></th>
+                                <th data-dsort="area">Area <span class="sort-icon"></span></th>
+                                <th data-dsort="file">File <span class="sort-icon"></span></th>
+                                <th>GPS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dithwah-body"></tbody>
+                    </table>
+                </div>
+                <div class="table-footer">
+                    <span id="dithwah-info">Showing 0-0 of 0</span>
+                    <div class="pagination" id="dithwah-pagination"></div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /page-content -->
+</div><!-- /main-content -->
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- App JS -->
+<script src="js/app.js"></script>
+
+<!-- Progress summary renderer -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Build progress bars after data loads
+    setTimeout(() => {
+        const container = document.getElementById('progress-summary');
+        if (!container || !allData.length) return;
+
+        const total = allData.length;
+        const metrics = [
+            { label: 'Reports Issued', count: allData.filter(d => d.status === 'Report Issued').length, color: '#17bf63' },
+            { label: 'Site Inspected', count: allData.filter(d => d.inspectionDate).length, color: '#1da1f2' },
+            { label: 'GPS Coordinates', count: allData.filter(d => d.gps).length, color: '#00d4aa' },
+            { label: 'LSSD Reports', count: allData.filter(d => d.lssdReceived === 'TRUE').length, color: '#7856ff' },
+            { label: 'Uploaded to DB', count: allData.filter(d => d.uploadStatus === 'Yes').length, color: '#ffad1f' },
+        ];
+
+        container.innerHTML = metrics.map(m => {
+            const pct = Math.round((m.count / total) * 100);
+            return `
+                <div class="progress-bar-container">
+                    <div class="progress-label">
+                        <span>${m.label}</span>
+                        <span>${m.count}/${total} (${pct}%)</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:${pct}%;background:${m.color};"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Map count
+        const mapCount = document.getElementById('map-count');
+        if (mapCount) {
+            mapCount.textContent = `${allData.filter(d => d.gps).length} locations mapped`;
+        }
+    }, 500);
+});
+</script>
+
+</body>
+</html>
