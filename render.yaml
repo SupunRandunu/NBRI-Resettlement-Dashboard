@@ -1,3 +1,5 @@
+# Security fix #17: This file contains no sensitive data (no secrets, tokens, or credentials).
+# All configuration here is public deployment metadata only.
 services:
   - type: web
     name: nbri-resettlement-dashboard

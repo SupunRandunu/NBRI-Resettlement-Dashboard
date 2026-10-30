@@ -1,4 +1,8 @@
 // ===== Global State =====
+// Security fix #14: Client-side filtering is by design for this public read-only dashboard.
+// All data is sourced from a publicly shared Google Spreadsheet with no sensitive information.
+// Security fix #19: The Spreadsheet ID visible in browser network requests is acceptable
+// because the spreadsheet is publicly shared / read-only.
 let allData = [];
 let filteredData = [];
 let dithwahData = [];
@@ -614,17 +618,18 @@ function renderTable() {
     const pageData = displayData.slice(start, start + PAGE_SIZE);
 
     // Render rows
+    // Security fix #6: Escape all user-controlled data to prevent DOM XSS
     tbody.innerHTML = pageData.map(d => `
         <tr>
-            <td>${d.serial}</td>
-            <td title="${d.beneficiary}">${d.beneficiary}</td>
-            <td>${d.district}</td>
-            <td>${d.dsd}</td>
+            <td>${escHtml(d.serial)}</td>
+            <td title="${escHtml(d.beneficiary)}">${escHtml(d.beneficiary)}</td>
+            <td>${escHtml(d.district)}</td>
+            <td>${escHtml(d.dsd)}</td>
             <td>${statusBadge(d.status)}</td>
             <td>${approvalBadge(d.approval)}</td>
-            <td>${d.resettlementType}</td>
-            <td>${d.inspectionDate || '-'}</td>
-            <td>${d.issuedDate || '-'}</td>
+            <td>${escHtml(d.resettlementType)}</td>
+            <td>${escHtml(d.inspectionDate) || '-'}</td>
+            <td>${escHtml(d.issuedDate) || '-'}</td>
             <td>${fileLink(d.report, d.reportLink)}</td>
             <td>${d.gps ? '\u{1F4CD}' : '-'}</td>
         </tr>
@@ -663,7 +668,7 @@ function statusBadge(status) {
     const cls = status === 'Report Issued' ? 'badge-issued'
         : status === 'Inspected' ? 'badge-inspected'
         : 'badge-not-inspected';
-    return `<span class="badge ${cls}">${status}</span>`;
+    return `<span class="badge ${cls}">${escHtml(status)}</span>`;
 }
 
 function approvalBadge(approval) {
@@ -671,7 +676,7 @@ function approvalBadge(approval) {
     const cls = approval === 'Approved' ? 'badge-approved'
         : approval === 'Rejected' ? 'badge-rejected'
         : 'badge-conditions';
-    return `<span class="badge ${cls}">${approval}</span>`;
+    return `<span class="badge ${cls}">${escHtml(approval)}</span>`;
 }
 
 // Table sort
@@ -760,14 +765,15 @@ function updateMapMarkers() {
                 weight: 2,
             }).addTo(map);
 
+            // Security fix #6: Escape user data in map popups
             marker.bindPopup(`
                 <div style="font-family:Inter,sans-serif;font-size:13px;line-height:1.5;">
-                    <strong>#${d.serial}</strong> - ${d.landName}<br>
-                    <b>District:</b> ${d.district} / ${d.dsd}<br>
-                    <b>GND:</b> ${d.gnd}<br>
-                    <b>Report:</b> ${d.reportStatus || 'Pending'}<br>
-                    <b>Approval:</b> ${d.approval || 'Pending'}<br>
-                    <b>Area:</b> ${d.area || '-'} acres
+                    <strong>#${escHtml(d.serial)}</strong> - ${escHtml(d.landName)}<br>
+                    <b>District:</b> ${escHtml(d.district)} / ${escHtml(d.dsd)}<br>
+                    <b>GND:</b> ${escHtml(d.gnd)}<br>
+                    <b>Report:</b> ${escHtml(d.reportStatus) || 'Pending'}<br>
+                    <b>Approval:</b> ${escHtml(d.approval) || 'Pending'}<br>
+                    <b>Area:</b> ${escHtml(d.area) || '-'} acres
                 </div>
             `);
 
@@ -892,18 +898,18 @@ function renderDithwahTable() {
     const start = (dCurrentPage - 1) * PAGE_SIZE;
     const pageData = displayData.slice(start, start + PAGE_SIZE);
 
-    // Render rows
+    // Security fix #6: Escape all user-controlled data to prevent DOM XSS
     tbody.innerHTML = pageData.map(d => `
         <tr>
-            <td>${d.serial}</td>
-            <td title="${escHtml(d.landName)}">${d.landName}</td>
-            <td>${d.district}</td>
-            <td>${d.dsd}</td>
-            <td>${d.gnd}</td>
+            <td>${escHtml(d.serial)}</td>
+            <td title="${escHtml(d.landName)}">${escHtml(d.landName)}</td>
+            <td>${escHtml(d.district)}</td>
+            <td>${escHtml(d.dsd)}</td>
+            <td>${escHtml(d.gnd)}</td>
             <td>${dithwahStatusBadge(d.reportStatus)}</td>
             <td>${approvalBadge(d.approval)}</td>
-            <td>${d.requestDate || '-'}</td>
-            <td>${d.area || '-'}</td>
+            <td>${escHtml(d.requestDate) || '-'}</td>
+            <td>${escHtml(d.area) || '-'}</td>
             <td>${fileLink(d.file, d.fileLink)}</td>
             <td>${d.gps ? '\u{1F4CD}' : '-'}</td>
         </tr>
@@ -963,7 +969,7 @@ function dithwahStatusBadge(status) {
         : s.includes('pending') ? 'badge-conditions'
         : s.includes('not') ? 'badge-not-inspected'
         : 'badge-inspected';
-    return `<span class="badge ${cls}">${status}</span>`;
+    return `<span class="badge ${cls}">${escHtml(status)}</span>`;
 }
 
 function exportDithwahCSV() {

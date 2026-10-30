@@ -10,11 +10,27 @@ from html.parser import HTMLParser
 
 import requests
 
+# Rate limiting (optional dependency - app works without it)
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    _has_limiter = True
+except ImportError:
+    _has_limiter = False
+
 app = Flask(__name__)
 
-SPREADSHEET_ID = '10SXfXC4iaAPxgzVFdjDEhGDo8TB75Bhh_I9A3uCFXA0'
+# Security fix #2: Spreadsheet ID from environment variable (with default for convenience).
+# The spreadsheet is publicly shared, so embedding the default is acceptable.
+SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID', '10SXfXC4iaAPxgzVFdjDEhGDo8TB75Bhh_I9A3uCFXA0')
 RESETTLEMENT_GID = '0'
 DITHWAH_GID = '1129733636'
+
+# Security fix #12: Rate limiting to prevent abuse
+if _has_limiter:
+    limiter = Limiter(get_remote_address, app=app, default_limits=["60 per minute"])
+else:
+    limiter = None
 
 # Cache: { key: (data, timestamp) }
 _cache = {}
@@ -42,7 +58,11 @@ def parse_gps(coord_str):
         if ',' in coord_str and 'N' not in coord_str.upper() and 'E' not in coord_str.upper():
             parts = coord_str.split(',')
             if len(parts) == 2:
-                return [float(parts[0].strip()), float(parts[1].strip())]
+                lat, lng = float(parts[0].strip()), float(parts[1].strip())
+                # Security fix #10: Validate GPS coordinate ranges
+                if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                    return None
+                return [lat, lng]
         parts = coord_str.split()
         if len(parts) >= 2:
             lat_str = parts[0]
@@ -53,6 +73,9 @@ def parse_gps(coord_str):
             lng = float(lng_str.rstrip('EWew'))
             if lng_str[-1] in 'Ww':
                 lng = -lng
+            # Security fix #10: Validate GPS coordinate ranges
+            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                return None
             return [lat, lng]
     except (ValueError, IndexError):
         pass
@@ -63,6 +86,9 @@ def parse_gps(coord_str):
 
 def _fetch_csv(gid):
     """Fetch a sheet tab as CSV from Google Sheets."""
+    # Security fix #9: Validate GID is numeric to prevent SSRF
+    if not str(gid).isdigit():
+        raise ValueError('Invalid GID')
     url = (f'https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}'
            f'/gviz/tq?tqx=out:csv&gid={gid}')
     resp = requests.get(url, timeout=15)
@@ -82,7 +108,7 @@ def _cached(key, loader, ttl):
     except Exception as e:
         # If fetch fails, return stale cache if available
         if entry:
-            print(f'[cache] fetch failed for {key}, using stale: {e}')
+            app.logger.warning('[cache] fetch failed for %s, using stale: %s', key, e)
             return entry[0]
         raise
 
@@ -158,11 +184,17 @@ def _clean_drive_link(raw_link):
         if len(parts) > 1:
             file_id = parts[1].split('/')[0].split('?')[0]
             return f'https://drive.google.com/file/d/{file_id}/view'
+    # Security fix #8: Prevent open redirect - only allow Google Drive URLs
+    if raw_link and not raw_link.startswith('https://drive.google.com/'):
+        return ''
     return raw_link
 
 
 def _parse_sheet_links(gid, header_match, link_col_name, key_col_idx=0):
     """Fetch HTML version of a sheet and extract hyperlinks from a specific column."""
+    # Security fix #9: Validate GID is numeric to prevent SSRF
+    if not str(gid).isdigit():
+        raise ValueError('Invalid GID')
     url = (f'https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}'
            f'/htmlview/sheet?headers=true&gid={gid}')
     resp = requests.get(url, timeout=30)
@@ -211,14 +243,53 @@ def fetch_dithwah_links():
     return _cached('dithwah_links', loader, LINK_CACHE_TTL)
 
 
+# ── Security Headers (fix #3) ───────────────────────────────────────
+
+@app.after_request
+def set_security_headers(response):
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' cdn.jsdelivr.net unpkg.com 'unsafe-inline'; "
+        "style-src 'self' fonts.googleapis.com cdn.jsdelivr.net unpkg.com 'unsafe-inline'; "
+        "font-src 'self' fonts.gstatic.com; "
+        "img-src 'self' data: tile.openstreetmap.org *.tile.openstreetmap.org; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'"
+    )
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    # Security fix #16: CORS - same-origin by default (no Access-Control-Allow-Origin
+    # header means browser enforces same-origin policy, which is secure).
+    return response
+
+
 # ── Routes ───────────────────────────────────────────────────────────
+# Security fix #4: This is intentionally a public read-only dashboard.
+# All data comes from a publicly shared Google Spreadsheet.
+# No authentication is required as there are no write operations or sensitive data.
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
 
+# Security fix #20: security.txt for responsible disclosure
+@app.route('/security.txt')
+@app.route('/.well-known/security.txt')
+def security_txt():
+    return (
+        "Contact: mailto:security@nbri.lk\n"
+        "Preferred-Languages: en\n"
+        "Canonical: /.well-known/security.txt\n"
+    ), 200, {'Content-Type': 'text/plain'}
+
+
 @app.route('/api/data')
+@(limiter.limit("30 per minute") if limiter else lambda f: f)
 def api_data():
     records = fetch_resettlement()
     report_links = fetch_resettlement_links()
@@ -259,6 +330,7 @@ def api_data():
 
 
 @app.route('/api/dithwah')
+@(limiter.limit("30 per minute") if limiter else lambda f: f)
 def api_dithwah():
     records = fetch_dithwah_csv()
     file_links = fetch_dithwah_links()
@@ -299,6 +371,7 @@ def api_dithwah():
 
 
 @app.route('/api/summary')
+@(limiter.limit("30 per minute") if limiter else lambda f: f)
 def api_summary():
     records = fetch_resettlement()
     total = len(records)
@@ -367,4 +440,5 @@ def api_summary():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Security fix #1: Debug mode controlled by environment variable
+    app.run(debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true', port=5000)

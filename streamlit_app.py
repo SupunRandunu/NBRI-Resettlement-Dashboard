@@ -1,3 +1,4 @@
+import html as _html
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -10,6 +11,12 @@ import io
 import json
 import urllib.parse
 from html.parser import HTMLParser
+
+
+# Security fix #5: HTML-escape helper to prevent XSS in unsafe_allow_html blocks
+def esc(val):
+    """Escape HTML entities in user-supplied values."""
+    return _html.escape(str(val)) if val is not None else ''
 
 # ── Page Config ──────────────────────────────────────────────────────
 st.set_page_config(
@@ -354,12 +361,13 @@ if sel_approval != 'All':
 
 # ── Helper: Metric Card HTML ────────────────────────────────────────
 def metric_card(icon, value, label, pct, color_class):
+    # Security fix #5: Escape interpolated values to prevent XSS
     return f"""
-    <div class="metric-card {color_class}">
-        <div class="icon">{icon}</div>
-        <div class="value">{value}</div>
-        <div class="label">{label}</div>
-        <div class="pct">{pct}% of total</div>
+    <div class="metric-card {esc(color_class)}">
+        <div class="icon">{esc(icon)}</div>
+        <div class="value">{esc(value)}</div>
+        <div class="label">{esc(label)}</div>
+        <div class="pct">{esc(pct)}% of total</div>
     </div>
     """
 
@@ -453,17 +461,18 @@ if nav == "Overview":
         m = folium.Map(location=[7.0, 80.8], zoom_start=8, tiles='OpenStreetMap')
         for _, row in map_df.iterrows():
             color = get_marker_color(row)
+            # Security fix #5: Escape user data in map popups to prevent XSS
             folium.CircleMarker(
                 location=[row['lat'], row['lng']],
                 radius=7, fill=True, fill_color=color, fill_opacity=0.85,
                 color='white', weight=2,
                 popup=folium.Popup(
-                    f"<b>#{row['Serial']}</b> - {row['Land Name']}<br>"
-                    f"<b>District:</b> {row['District']} / {row['DSD']}<br>"
-                    f"<b>GND:</b> {row['GND']}<br>"
-                    f"<b>Report:</b> {row['Report Status'] or 'Pending'}<br>"
-                    f"<b>Approval:</b> {row['Approval'] or 'Pending'}<br>"
-                    f"<b>Area:</b> {row['Area'] or '-'} acres",
+                    f"<b>#{esc(row['Serial'])}</b> - {esc(row['Land Name'])}<br>"
+                    f"<b>District:</b> {esc(row['District'])} / {esc(row['DSD'])}<br>"
+                    f"<b>GND:</b> {esc(row['GND'])}<br>"
+                    f"<b>Report:</b> {esc(row['Report Status']) or 'Pending'}<br>"
+                    f"<b>Approval:</b> {esc(row['Approval']) or 'Pending'}<br>"
+                    f"<b>Area:</b> {esc(row['Area']) or '-'} acres",
                     max_width=250),
             ).add_to(m)
         folium_static(m, height=520)
@@ -589,10 +598,11 @@ elif nav == "Analytics":
         progress_html = ""
         for label, count, color in metrics:
             p = round(count / total * 100)
+            # Security fix #5: Escape values in HTML
             progress_html += f"""
             <div class="progress-container">
-                <div class="progress-label"><span>{label}</span><span>{count}/{total} ({p}%)</span></div>
-                <div class="progress-bar-bg"><div class="progress-fill" style="width:{p}%;background:{color};"></div></div>
+                <div class="progress-label"><span>{esc(label)}</span><span>{esc(count)}/{esc(total)} ({esc(p)}%)</span></div>
+                <div class="progress-bar-bg"><div class="progress-fill" style="width:{p}%;background:{esc(color)};"></div></div>
             </div>"""
         st.markdown(progress_html, unsafe_allow_html=True)
 
