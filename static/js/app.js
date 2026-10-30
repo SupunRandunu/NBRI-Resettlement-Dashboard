@@ -165,10 +165,18 @@ function setupMetricClicks() {
     });
 }
 
+// Extract ref type from last part of Ref. No. (e.g. "NBRO/HSPTD/NLRP-D/SI/GRS/" -> "GRS")
+function getRefType(ref) {
+    if (!ref) return '';
+    const parts = ref.replace(/\/+$/, '').split('/');
+    return parts[parts.length - 1] || '';
+}
+
 function setupFilters() {
     const distFilter = document.getElementById('filter-district');
     const statusFilter = document.getElementById('filter-status');
     const approvalFilter = document.getElementById('filter-approval');
+    const refTypeFilter = document.getElementById('filter-reftype');
     const typeFilter = document.getElementById('filter-type');
     const resetBtn = document.getElementById('filter-reset');
 
@@ -176,11 +184,13 @@ function setupFilters() {
     const districts = [...new Set(dithwahData.map(d => d.district).filter(Boolean))].sort();
     const statuses = [...new Set(dithwahData.map(d => d.reportStatus).filter(Boolean))].sort();
     const approvals = [...new Set(dithwahData.map(d => d.approval).filter(Boolean))].sort();
+    const refTypes = [...new Set(dithwahData.map(d => getRefType(d.ref)).filter(Boolean))].sort();
     const dsds = [...new Set(dithwahData.map(d => d.dsd).filter(Boolean))].sort();
 
     populateSelect(distFilter, districts);
     populateSelect(statusFilter, statuses);
     populateSelect(approvalFilter, approvals);
+    populateSelect(refTypeFilter, refTypes);
     populateSelect(typeFilter, dsds);
 
     // When district changes, update DSD options
@@ -195,7 +205,7 @@ function setupFilters() {
         applyFilters();
     });
 
-    [statusFilter, approvalFilter, typeFilter].forEach(el => {
+    [statusFilter, approvalFilter, refTypeFilter, typeFilter].forEach(el => {
         el.addEventListener('change', applyFilters);
     });
 
@@ -203,7 +213,7 @@ function setupFilters() {
         distFilter.value = '';
         statusFilter.value = '';
         approvalFilter.value = '';
-        // Reset DSD to show all
+        refTypeFilter.value = '';
         typeFilter.innerHTML = '<option value="">All DSDs</option>';
         populateSelect(typeFilter, [...new Set(dithwahData.map(d => d.dsd).filter(Boolean))].sort());
         typeFilter.value = '';
@@ -224,12 +234,14 @@ function applyFilters() {
     const dist = document.getElementById('filter-district').value;
     const status = document.getElementById('filter-status').value;
     const approval = document.getElementById('filter-approval').value;
+    const refType = document.getElementById('filter-reftype').value;
     const dsd = document.getElementById('filter-type').value;
 
     filteredDithwah = dithwahData.filter(d => {
         if (dist && d.district !== dist) return false;
         if (status && d.reportStatus !== status) return false;
         if (approval && d.approval !== approval) return false;
+        if (refType && getRefType(d.ref) !== refType) return false;
         if (dsd && d.dsd !== dsd) return false;
         return true;
     });
